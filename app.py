@@ -1,5 +1,6 @@
 
 from random import randint
+
 import streamlit as st
 
 st.set_page_config(
@@ -7,6 +8,92 @@ st.set_page_config(
     page_icon="🪙",
     layout="centered"
 )
+
+COIN_ANIMATION = """
+<div class="coin-stage">
+  <div class="coin-toss">
+    <div class="coin">
+      <div class="coin-face coin-heads">H</div>
+      <div class="coin-face coin-tails">T</div>
+    </div>
+  </div>
+  <div class="coin-shadow"></div>
+  <div class="coin-caption">Flipping...</div>
+</div>
+
+<style>
+.coin-stage {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-end;
+    height: 190px;
+    perspective: 800px;
+    margin: 0.5rem 0 1rem;
+}
+.coin-toss {
+    transform-style: preserve-3d;
+    animation: coin-toss 1s ease-in-out infinite;
+}
+.coin {
+    position: relative;
+    width: 86px;
+    height: 86px;
+    transform-style: preserve-3d;
+    animation: coin-spin 1s linear infinite;
+}
+.coin-face {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    border: 4px solid #b07d12;
+    background: radial-gradient(
+        circle at 32% 28%,
+        #ffeb99 0%,
+        #f5c330 45%,
+        #c8901b 100%
+    );
+    box-shadow: inset 0 0 0 6px rgba(255, 255, 255, 0.28);
+    color: #7a5406;
+    font-family: Georgia, "Times New Roman", serif;
+    font-size: 38px;
+    font-weight: 700;
+    backface-visibility: hidden;
+}
+.coin-tails {
+    transform: rotateX(180deg);
+}
+.coin-shadow {
+    width: 72px;
+    height: 10px;
+    margin-top: 10px;
+    border-radius: 50%;
+    background: rgba(0, 0, 0, 0.35);
+    filter: blur(3px);
+    animation: coin-shadow 1s ease-in-out infinite;
+}
+.coin-caption {
+    margin-top: 12px;
+    opacity: 0.7;
+    font-size: 0.9rem;
+}
+@keyframes coin-spin {
+    from { transform: rotateX(0deg); }
+    to   { transform: rotateX(720deg); }
+}
+@keyframes coin-toss {
+    0%, 100% { transform: translateY(0); }
+    50%      { transform: translateY(-72px); }
+}
+@keyframes coin-shadow {
+    0%, 100% { transform: scale(1); opacity: 0.35; }
+    50%      { transform: scale(0.6); opacity: 0.12; }
+}
+</style>
+"""
 
 
 def flip(num_coins, times):
@@ -31,6 +118,19 @@ def flip(num_coins, times):
                 break
 
             wins += 1
+
+    return wins, flips
+
+
+def flip_with_animation(num_coins, times):
+    """Run the simulation while a cartoon coin spins on screen."""
+    animation = st.empty()
+    animation.markdown(COIN_ANIMATION, unsafe_allow_html=True)
+
+    try:
+        wins, flips = flip(num_coins, times)
+    finally:
+        animation.empty()
 
     return wins, flips
 
@@ -83,8 +183,7 @@ if st.button("Run", type="primary", use_container_width=True):
             "time. Please use 10 million flips or fewer."
         )
     else:
-        with st.spinner("Flipping..."):
-            wins, total_flips = flip(int(num_coins), int(times))
+        wins, total_flips = flip_with_animation(int(num_coins), int(times))
 
         st.divider()
         st.subheader("Results")
