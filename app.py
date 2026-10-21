@@ -1,5 +1,6 @@
 
 from random import randint
+import time
 
 import streamlit as st
 
@@ -9,27 +10,35 @@ st.set_page_config(
     layout="centered"
 )
 
-COIN_ANIMATION = """
-<div class="coin-stage">
-  <div class="coin-toss">
-    <div class="coin">
-      <div class="coin-face coin-heads">H</div>
-      <div class="coin-face coin-tails">T</div>
-    </div>
-  </div>
-  <div class="coin-shadow"></div>
-  <div class="coin-caption">Flipping...</div>
-</div>
+# One full toss cycle. A small simulation finishes in microseconds, so
+# without this the coin would be created and destroyed in the same
+# frame and never actually paint.
+MIN_ANIMATION_SECONDS = 1.2
 
+ANIMATION_HEIGHT = 210
+
+# Rendered in an iframe rather than with st.markdown or st.html:
+# Streamlit sanitizes those through DOMPurify, which strips the
+# @keyframes rules this animation depends on.
+COIN_ANIMATION = """
+<!DOCTYPE html>
+<html>
+<head>
 <style>
+html, body {
+    margin: 0;
+    padding: 0;
+    background: transparent;
+    overflow: hidden;
+}
 .coin-stage {
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: flex-end;
-    height: 190px;
+    height: 200px;
     perspective: 800px;
-    margin: 0.5rem 0 1rem;
+    font-family: "Source Sans Pro", -apple-system, sans-serif;
 }
 .coin-toss {
     transform-style: preserve-3d;
@@ -44,7 +53,10 @@ COIN_ANIMATION = """
 }
 .coin-face {
     position: absolute;
-    inset: 0;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -61,6 +73,7 @@ COIN_ANIMATION = """
     font-family: Georgia, "Times New Roman", serif;
     font-size: 38px;
     font-weight: 700;
+    -webkit-backface-visibility: hidden;
     backface-visibility: hidden;
 }
 .coin-tails {
@@ -77,8 +90,12 @@ COIN_ANIMATION = """
 }
 .coin-caption {
     margin-top: 12px;
-    opacity: 0.7;
+    color: #888;
     font-size: 0.9rem;
+}
+@-webkit-keyframes coin-spin {
+    from { -webkit-transform: rotateX(0deg); }
+    to   { -webkit-transform: rotateX(720deg); }
 }
 @keyframes coin-spin {
     from { transform: rotateX(0deg); }
@@ -93,6 +110,20 @@ COIN_ANIMATION = """
     50%      { transform: scale(0.6); opacity: 0.12; }
 }
 </style>
+</head>
+<body>
+<div class="coin-stage">
+  <div class="coin-toss">
+    <div class="coin">
+      <div class="coin-face coin-heads">H</div>
+      <div class="coin-face coin-tails">T</div>
+    </div>
+  </div>
+  <div class="coin-shadow"></div>
+  <div class="coin-caption">Flipping...</div>
+</div>
+</body>
+</html>
 """
 
 
@@ -125,10 +156,16 @@ def flip(num_coins, times):
 def flip_with_animation(num_coins, times):
     """Run the simulation while a cartoon coin spins on screen."""
     animation = st.empty()
-    animation.markdown(COIN_ANIMATION, unsafe_allow_html=True)
 
+    animation.iframe(COIN_ANIMATION, height=ANIMATION_HEIGHT)
+
+    start = time.perf_counter()
     try:
         wins, flips = flip(num_coins, times)
+        remaining = MIN_ANIMATION_SECONDS - (time.perf_counter() - start)
+
+        if remaining > 0:
+            time.sleep(remaining)
     finally:
         animation.empty()
 
